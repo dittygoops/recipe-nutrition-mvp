@@ -142,7 +142,7 @@ function App() {
               Ingredients
             </h2>
             
-            {ingredients.map((ingredient, index) => (
+            {ingredients.map((ingredient) => (
               <div key={ingredient.id} className="flex flex-wrap gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
                 <div className="flex-1 min-w-0">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
