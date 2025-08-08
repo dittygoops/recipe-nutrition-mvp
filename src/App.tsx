@@ -8,6 +8,15 @@ interface Ingredient {
   unit: string
 }
 
+interface NutritionData {
+  calories: number
+  protein: number
+  carbohydrates: number
+  fiber: number
+  totalFat: number
+  addedSugar: number
+}
+
 // Fuzzy search utility function
 function fuzzySearch(query: string, options: readonly string[]): string[] {
   if (!query.trim()) return []
@@ -28,6 +37,8 @@ function App() {
   ])
   const [showNameDropdown, setShowNameDropdown] = useState<string | null>(null)
   const [showUnitDropdown, setShowUnitDropdown] = useState<string | null>(null)
+  const [nutritionData, setNutritionData] = useState<NutritionData | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
 
   const addIngredient = () => {
     const newIngredient: Ingredient = {
@@ -62,6 +73,8 @@ function App() {
 
   const calculateMacros = async () => {
     console.log('Calculating macros for ingredients:', ingredients)
+    setIsLoading(true)
+    setNutritionData(null)
     
     // Format ingredients for API
     const ingredientsList = ingredients.map(ingredient => `${ingredient.amount} ${ingredient.unit} ${ingredient.name}`)
@@ -85,12 +98,29 @@ function App() {
       if (response.ok) {
         const data = await response.json()
         console.log('Macro calculation result:', data)
-        // TODO: Display the results in the UI
+        
+        if (data.success && data.nutrition_data?.nutrition?.nutrients) {
+          const nutrients = data.nutrition_data.nutrition.nutrients
+          
+          // Extract the specific nutrition values
+          const nutrition: NutritionData = {
+            calories: nutrients.find((n: any) => n.name === 'Calories')?.amount || 0,
+            protein: nutrients.find((n: any) => n.name === 'Protein')?.amount || 0,
+            carbohydrates: nutrients.find((n: any) => n.name === 'Carbohydrates')?.amount || 0,
+            fiber: nutrients.find((n: any) => n.name === 'Fiber')?.amount || 0,
+            totalFat: nutrients.find((n: any) => n.name === 'Fat')?.amount || 0,
+            addedSugar: nutrients.find((n: any) => n.name === 'Sugar')?.amount || 0
+          }
+          
+          setNutritionData(nutrition)
+        }
       } else {
         console.error('Error calculating macros:', response.status, response.statusText)
       }
     } catch (error) {
       console.error('Error sending request:', error)
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -220,12 +250,47 @@ function App() {
         <div className="text-center">
           <button
             onClick={calculateMacros}
-            disabled={ingredients.some(ing => !ing.name || !ing.amount || !ing.unit)}
+            disabled={ingredients.some(ing => !ing.name || !ing.amount || !ing.unit) || isLoading}
             className="px-8 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-semibold text-lg"
           >
-            Calculate Macros
+            {isLoading ? 'Calculating...' : 'Calculate Macros'}
           </button>
         </div>
+
+        {/* Nutrition Results */}
+        {nutritionData && (
+          <div className="mt-8 bg-white rounded-lg shadow-lg p-6">
+            <h3 className="text-2xl font-semibold text-gray-700 mb-6 text-center">
+              Nutrition Information
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+              <div className="text-center p-4 bg-blue-50 rounded-lg">
+                <div className="text-3xl font-bold text-blue-600">{Math.round(nutritionData.calories)}</div>
+                <div className="text-sm text-gray-600">Calories</div>
+              </div>
+              <div className="text-center p-4 bg-green-50 rounded-lg">
+                <div className="text-3xl font-bold text-green-600">{nutritionData.protein.toFixed(1)}g</div>
+                <div className="text-sm text-gray-600">Protein</div>
+              </div>
+              <div className="text-center p-4 bg-yellow-50 rounded-lg">
+                <div className="text-3xl font-bold text-yellow-600">{nutritionData.carbohydrates.toFixed(1)}g</div>
+                <div className="text-sm text-gray-600">Carbohydrates</div>
+              </div>
+              <div className="text-center p-4 bg-purple-50 rounded-lg">
+                <div className="text-3xl font-bold text-purple-600">{nutritionData.fiber.toFixed(1)}g</div>
+                <div className="text-sm text-gray-600">Fiber</div>
+              </div>
+              <div className="text-center p-4 bg-red-50 rounded-lg">
+                <div className="text-3xl font-bold text-red-600">{nutritionData.totalFat.toFixed(1)}g</div>
+                <div className="text-sm text-gray-600">Total Fat</div>
+              </div>
+              <div className="text-center p-4 bg-orange-50 rounded-lg">
+                <div className="text-3xl font-bold text-orange-600">{nutritionData.addedSugar.toFixed(1)}g</div>
+                <div className="text-sm text-gray-600">Sugar</div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
